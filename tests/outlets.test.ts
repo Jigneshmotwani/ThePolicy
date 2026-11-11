@@ -110,11 +110,11 @@ describe("fact sheet keeps only claims two independent outlets support", () => {
   it("drops single-outlet claims, same-wire claims and conflicting claims", async () => {
     const llm = scriptedLlm(() => ({
       facts: [
-        { text: "Two outlets agree on this.", support: ["R1.1", "R2.1"] },
-        { text: "Only one outlet says this.", support: ["R1.2"] },
-        { text: "Only the two PTI copies say this.", support: ["R3.1", "R4.1"] },
-        { text: "The outlets disagree on the toll.", support: ["R1.3", "R2.2"] },
-        { text: "The model invented support.", support: ["R9.9"] },
+        { text: "Two outlets agree on this.", support: ["R1.1", "R2.1"], role: "core" },
+        { text: "Only one outlet says this.", support: ["R1.2"], role: "supporting" },
+        { text: "Only the two PTI copies say this.", support: ["R3.1", "R4.1"], role: "supporting" },
+        { text: "The outlets disagree on the toll.", support: ["R1.3", "R2.2"], role: "supporting" },
+        { text: "The model invented support.", support: ["R9.9"], role: "supporting" },
       ],
       conflicts: [{ note: "Toll given as 4 and as 6", claims: ["R1.3", "R2.2"] }],
     }));
@@ -133,8 +133,8 @@ describe("fact sheet keeps only claims two independent outlets support", () => {
     const llm = scriptedLlm(() => ({
       conflicts: [{ note: "Number injured: two or three", claims: ["R1.1", "R2.1"] }],
       facts: [
-        { text: "An attack took place in Kulgam on Wednesday.", support: ["R1.1", "R2.1", "R2.2"] },
-        { text: "Three people were injured.", support: ["R1.1", "R2.1"] },
+        { text: "An attack took place in Kulgam on Wednesday.", support: ["R1.1", "R2.1", "R2.2"], role: "core" },
+        { text: "Three people were injured.", support: ["R1.1", "R2.1"], role: "supporting" },
       ],
     }));
     const sheet = await buildFactSheet(llm, new Meter(), [

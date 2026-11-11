@@ -5,8 +5,8 @@ import type { Draft, Fact } from "@/pipeline/types";
 import { scriptedLlm } from "./helpers";
 
 const facts: Fact[] = [
-  { id: 1, text: "The state assembly passed the heat-action bill on Tuesday.", reportIds: [1, 2] },
-  { id: 2, text: "The bill requires cities to publish a heat plan before each summer.", reportIds: [1, 2] },
+  { id: 1, text: "The state assembly passed the heat-action bill on Tuesday.", role: "core", reportIds: [1, 2] },
+  { id: 2, text: "The bill requires cities to publish a heat plan before each summer.", role: "supporting", reportIds: [1, 2] },
 ];
 const good: Draft = {
   headline: "State assembly passes heat-action bill",

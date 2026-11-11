@@ -46,6 +46,11 @@ export async function runStep<T>(
 ): Promise<T> {
   const meter = new Meter();
   const startedAt = ctx.now().toISOString();
+  // Lets the console show which agent has the story right now.
+  const mark = (agentNow: string | null) => {
+    if (eventId !== null) ctx.db.prepare("UPDATE events SET current_agent = ? WHERE id = ?").run(agentNow, eventId);
+  };
+  mark(agent);
   try {
     const res = await fn(meter);
     writeStep(ctx.db, {
@@ -60,22 +65,27 @@ export async function runStep<T>(
       note: `Failed: ${(e as Error)?.message ?? String(e)}`, meter,
     });
     throw e;
+  } finally {
+    mark(null);
   }
 }
 
 export function setEventStatus(
-  ctx: Ctx,
+  ctx: Pick<Ctx, "db" | "now">,
   eventId: number,
   status: StoryStatus,
   reason: string | null,
   note: string,
   extra: Record<string, string | number | null> = {},
-) {
+  /** Only make the change if the story is still in this status (an editor may have moved it). */
+  onlyFrom?: StoryStatus,
+): boolean {
   const cols = Object.keys(extra);
-  ctx.db
+  const res = ctx.db
     .prepare(
       `UPDATE events SET status = ?, status_reason = ?, status_note = ?, updated_at = ?
-       ${cols.map((c) => `, ${c} = ?`).join("")} WHERE id = ?`,
+       ${cols.map((c) => `, ${c} = ?`).join("")} WHERE id = ?${onlyFrom ? " AND status = ?" : ""}`,
     )
-    .run(status, reason, oneLine(note, 300), ctx.now().toISOString(), ...cols.map((c) => extra[c]), eventId);
+    .run(status, reason, oneLine(note, 300), ctx.now().toISOString(), ...cols.map((c) => extra[c]), eventId, ...(onlyFrom ? [onlyFrom] : []));
+  return Number(res.changes) > 0;
 }

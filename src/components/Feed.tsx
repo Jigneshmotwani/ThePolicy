@@ -329,7 +329,7 @@ export default function Feed({ stories: initial, now }: { stories: Story[]; now:
             <span className="f-plate-tag">[STORY IMAGE]</span>
             <span className="f-plate-cap">Licensed photo, or an illustration labelled as AI-made</span>
           </div>
-          <p className="dropcap f-body">{st.angles[picked].body}</p>
+          <Body text={st.angles[picked].body} />
           <div className="f-sources">
             <div className="f-sources-row">
               <span className="f-sources-label">Sources</span>
@@ -513,5 +513,21 @@ export default function Feed({ stories: initial, now }: { stories: Story[]; now:
         </footer>
       </div>
     </div>
+  );
+}
+
+/**
+ * The story paragraph with its drop cap. When the copy opens with initials or
+ * an acronym ("PT Usha", "RBI holds..."), the whole run is set as the drop
+ * cap so it is not split into "P" and "T Usha".
+ */
+function Body({ text }: { text: string }) {
+  const run = /^[A-Z]{2,5}(?=[\s'’,.:-])/.exec(text)?.[0];
+  if (!run) return <p className="dropcap f-body">{text}</p>;
+  return (
+    <p className="f-body">
+      <span className="dropcap-run">{run}</span>
+      {text.slice(run.length)}
+    </p>
   );
 }

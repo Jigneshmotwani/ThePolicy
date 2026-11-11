@@ -14,6 +14,8 @@ export interface FeedItem {
   summary: string;
   /** ISO 8601 UTC */
   publishedAt: string;
+  /** Byline as the feed gives it (dc:creator / author), when it gives one. */
+  author?: string;
 }
 
 const SUMMARY_MAX = 500;
@@ -169,6 +171,7 @@ export function parseFeed(xml: string): FeedItem[] {
     title: string;
     summary: string;
     date: string;
+    author: string;
   }
   const raws: Raw[] = [];
 
@@ -191,6 +194,7 @@ export function parseFeed(xml: string): FeedItem[] {
       // description only: content:encoded is the full text and is not ours to keep
       summary: content(item.description),
       date: content(item.pubDate) || content(item["dc:date"]) || content(item.date) || content(item["atom:updated"]),
+      author: asArray(item["dc:creator"] as unknown).map(content).filter(Boolean).join(", ") || content(item.author),
     });
   }
 
@@ -202,6 +206,10 @@ export function parseFeed(xml: string): FeedItem[] {
       title: content(entry.title),
       summary: content(entry.summary), // never atom:content
       date: content(entry.published) || content(entry.updated),
+      author: asArray(entry.author as unknown)
+        .map((a) => content(typeof a === "object" && a ? (a as Record<string, unknown>).name : a))
+        .filter(Boolean)
+        .join(", "),
     });
   }
 
@@ -218,6 +226,7 @@ export function parseFeed(xml: string): FeedItem[] {
       title,
       summary: capSummary(htmlToText(r.summary)),
       publishedAt: toIso(r.date) ?? now,
+      ...(htmlToText(r.author) ? { author: htmlToText(r.author).slice(0, 200) } : {}),
     });
   }
   return out;

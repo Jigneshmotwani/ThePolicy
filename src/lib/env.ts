@@ -30,6 +30,8 @@ export const env = {
   waitingTtlHours: num("WAITING_TTL_HOURS", 12),
   minClaims: num("MIN_CLAIMS", 3),
   maxEventsPerSweep: num("MAX_EVENTS_PER_SWEEP", 40),
+  dailyBudgetUsd: num("DAILY_BUDGET_USD", 5),
+  adminPassword: str("ADMIN_PASSWORD", ""),
   userAgent: str("BOT_USER_AGENT", "TheSecondSourceBot/0.1 (news corroboration; local development)"),
   fetchDelayMs: num("FETCH_DELAY_MS", 1000),
   databasePath: str("DATABASE_PATH", "./data/second-source.db"),

@@ -29,6 +29,7 @@ a{color:inherit}a:hover{color:var(--accent)}
 @keyframes shadeIn{0%{opacity:0}100%{opacity:.6}}
 @media (prefers-reduced-motion:reduce){.page.flip-up,.page.flip-down,.page.under.reveal::after,.page.under.cover::after{animation-duration:.01s}}
 .plate{background-color:var(--panel);background-image:radial-gradient(var(--rule) 1.1px,transparent 1.5px);background-size:7px 7px}
+.dropcap-run{float:left;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:50px;line-height:42px;padding:4px 8px 0 0}
 .dropcap::first-letter{float:left;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:50px;line-height:42px;padding:4px 8px 0 0}
 /* ---- End of verbatim block ---- */
 

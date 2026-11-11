@@ -1,5 +1,6 @@
 import { DESKS, DESK_LABELS, outletName, type Desk } from "../../config/sources";
 import type { Db } from "./db";
+import { isLiveBlog } from "../pipeline/liveblog";
 
 export interface StorySource {
   outletId: string;
@@ -50,7 +51,7 @@ export function getPrintedStories(db: Db, limit = 60): Story[] {
   // Reports that support at least one corroborated claim of the event,
   // earliest first so the first row seen per outlet is its earliest report.
   const supportOf = db.prepare(
-    `SELECT r.outlet_id, r.url
+    `SELECT r.outlet_id, r.url, r.title
        FROM reports r
       WHERE r.id IN (
               SELECT s.report_id
@@ -80,8 +81,9 @@ export function getPrintedStories(db: Db, limit = 60): Story[] {
     if (angles.length === 0) continue;
 
     const byOutlet = new Map<string, StorySource>();
-    for (const r of supportOf.all(e.id) as { outlet_id: string; url: string }[]) {
-      if (byOutlet.has(r.outlet_id) || !isWebLink(r.url)) continue;
+    for (const r of supportOf.all(e.id) as { outlet_id: string; url: string; title: string }[]) {
+      // Live pages keep changing and are never offered as a source.
+      if (byOutlet.has(r.outlet_id) || !isWebLink(r.url) || isLiveBlog(r.url, r.title)) continue;
       byOutlet.set(r.outlet_id, { outletId: r.outlet_id, name: outletName(r.outlet_id), href: r.url });
     }
     const sources = [...byOutlet.values()].sort((a, b) => a.name.localeCompare(b.name, "en"));

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { DESK_LABELS, type Desk } from "@config/sources";
 import type { Llm, Meter } from "@/lib/llm";
-import { wordCount } from "@/lib/text";
+import { splitSentences, wordCount } from "@/lib/text";
 import type { Draft, Fact } from "./types";
 
 /**
@@ -16,13 +16,20 @@ export const BODY_MAX_WORDS = 60;
 const draftSchema = z.object({ headline: z.string().min(8), body: z.string().min(40) });
 
 const SYSTEM = `You are the rewrite desk of a news agency. You write a short news item from a FACT SHEET and from nothing else.
-Hard rules:
+Each fact is marked [core], [supporting] or [background].
+What you may say:
 - Use only facts F1, F2, ... on the sheet. If the sheet lists points DISPUTED between outlets, do not mention them at all.
 - Do not add names, numbers, dates, places, causes, context, background or consequences that are not on it, even if you know them.
-- Original wording: plain sentences of your own. Neutral tone: no adjectives of judgement, no drama, no speculation, no advice to the reader.
 - Keep attribution where the sheet has it ("police said").
-- Headline: at most ${HEADLINE_MAX} characters, sentence case, no full stop, no clickbait.
-- Body: one paragraph of ${BODY_MIN_WORDS} to ${BODY_MAX_WORDS} words. Complete sentences. Lead with the most important fact. You need not use every fact.
+How it should read: a news paragraph, not a list.
+- Lead with the core fact: the first sentence says what happened.
+- Then what matters most from the supporting facts, in order of importance. You need not use every fact; leave out the minor ones.
+- Connect the sentences so each follows from the one before: carry the subject forward, join related facts in one sentence, vary sentence length. Do not write a string of short flat statements, and do not invent a link (cause, contrast, sequence) the sheet does not state.
+- [background] facts appear only in passing, as a few words inside a sentence about something else ("Qantas chief executive Vanessa Hudson said..."). Never give a background fact a sentence of its own.
+- Original wording of your own. Neutral tone: no adjectives of judgement, no drama, no speculation, no advice to the reader.
+Format:
+- Headline: at most ${HEADLINE_MAX} characters, sentence case, no full stop, no clickbait. It states the core fact.
+- Body: one paragraph of ${BODY_MIN_WORDS} to ${BODY_MAX_WORDS} words, in two to four complete sentences.
 - Plain text only: no markdown, no quotation marks unless the sheet quotes.
 Return {"headline":"...","body":"..."}.`;
 
@@ -32,11 +39,15 @@ export function lengthProblem(d: Draft): string | null {
   const w = wordCount(d.body);
   if (w < BODY_MIN_WORDS || w > BODY_MAX_WORDS) return `body is ${w} words; it must be ${BODY_MIN_WORDS} to ${BODY_MAX_WORDS}`;
   if (/[\n*#_`]/.test(d.body)) return "body must be one plain-text paragraph without markdown";
+  const sentences = splitSentences(d.body);
+  if (sentences.length < 2 || sentences.length > 4) return `body has ${sentences.length} sentences; write two to four connected sentences`;
+  const stub = sentences.find((x) => wordCount(x) < 6);
+  if (stub) return `"${stub}" is a stub sentence; fold it into a neighbouring sentence`;
   return null;
 }
 
 export const sheetText = (facts: Fact[], disputed: string[] = []) =>
-  facts.map((f, i) => `F${i + 1}. ${f.text}`).join("\n") +
+  facts.map((f, i) => `F${i + 1} [${f.role}]. ${f.text}`).join("\n") +
   (disputed.length ? `\n\nDISPUTED BETWEEN OUTLETS (never state or imply any version of these)\n${disputed.map((d) => `- ${d}`).join("\n")}` : "");
 const clean = (d: Draft): Draft => ({ headline: d.headline.trim().replace(/\.$/, ""), body: d.body.replace(/\s+/g, " ").trim() });
 

@@ -1,7 +1,7 @@
 import type { Db } from "@/lib/db";
 import type { Llm } from "@/lib/llm";
 import type { FeedItem } from "@/lib/feeds";
-import type { ArticleText } from "@/lib/article";
+import type { ArticleText, Headline } from "@/lib/article";
 
 export const AGENTS = [
   "Wire Scout",
@@ -20,10 +20,13 @@ export type StoryStatus = "waiting" | "working" | "held" | "printed" | "spiked" 
 export interface Ctx {
   db: Db;
   llm: Llm;
-  sweepId: number;
+  /** Null for work done outside a sweep (a story an editor sent to the desk). */
+  sweepId: number | null;
   now: () => Date;
   fetchFeed: (url: string) => Promise<{ status: number; notModified: boolean; items: FeedItem[] }>;
   fetchArticle: (url: string) => Promise<ArticleText | null>;
+  /** Headline and body of a pasted link (outlets read in full only). */
+  fetchPage: (url: string) => Promise<{ headline: Headline; article: ArticleText | null } | null>;
   log: (line: string) => void;
 }
 
@@ -41,6 +44,7 @@ export interface ReportRow {
   wire_agency: string | null;
   fingerprint: string | null;
   claims_at: string | null;
+  byline: string | null;
 }
 
 export interface EventRow {
@@ -58,12 +62,17 @@ export interface EventRow {
   created_at: string;
   expires_at: string;
   printed_at: string | null;
+  priority: number;
+  current_agent: string | null;
 }
+
+export type FactRole = "core" | "supporting" | "background";
 
 /** One corroborated claim and the reports behind it. */
 export interface Fact {
   id: number;
   text: string;
+  role: FactRole;
   reportIds: number[];
 }
 

@@ -10,8 +10,8 @@ import type { Ctx } from "./types";
 export async function wireScout(ctx: Ctx): Promise<{ stored: number }> {
   return runStep(ctx, "Wire Scout", null, async () => {
     const insert = ctx.db.prepare(
-      `INSERT OR IGNORE INTO reports (outlet_id, url, title, summary, feed_desk, published_at, fetched_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO reports (outlet_id, url, title, summary, feed_desk, published_at, fetched_at, byline)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     );
     const cutoff = ctx.now().getTime() - EVENT_WINDOW_HOURS * 3600_000;
     let stored = 0, seen = 0, unchanged = 0, stale = 0;
@@ -39,7 +39,7 @@ export async function wireScout(ctx: Ctx): Promise<{ stored: number }> {
                 continue;
               }
               const r = insert.run(
-                outlet.id, item.url, item.title, item.summary, feed.desk, item.publishedAt, ctx.now().toISOString(),
+                outlet.id, item.url, item.title, item.summary, feed.desk, item.publishedAt, ctx.now().toISOString(), item.author ?? null,
               );
               stored += Number(r.changes);
             }

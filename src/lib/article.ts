@@ -496,3 +496,33 @@ export async function fetchArticle(url: string): Promise<ArticleText | null> {
     return null;
   }
 }
+
+export interface Headline {
+  title: string;
+  summary: string;
+  author: string | null;
+}
+
+/** Headline, description and byline from an article page's own metadata. */
+export function extractHeadline(html: string): Headline | null {
+  const $ = load(html);
+  const meta = (sel: string) => ($(sel).attr("content") ?? "").replace(/\s+/g, " ").trim();
+  const title =
+    meta("meta[property='og:title']") || meta("meta[name='twitter:title']") || $("h1").first().text().replace(/\s+/g, " ").trim() ||
+    $("title").text().replace(/\s+/g, " ").trim();
+  if (!title) return null;
+  const summary = (meta("meta[property='og:description']") || meta("meta[name='description']")).slice(0, 500);
+  return { title: title.slice(0, 300), summary, author: meta("meta[name='author']") || null };
+}
+
+/** Used when an editor pastes a link to an outlet we read in full. Null if the page cannot be read. */
+export async function fetchPage(url: string): Promise<{ headline: Headline; article: ArticleText | null } | null> {
+  try {
+    const res = await politeFetch(url);
+    if (res.status !== 200) return null;
+    const headline = extractHeadline(res.text);
+    return headline ? { headline, article: extractArticle(res.text) } : null;
+  } catch {
+    return null;
+  }
+}
