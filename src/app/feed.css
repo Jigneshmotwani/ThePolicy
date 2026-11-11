@@ -1,0 +1,94 @@
+/* ---- Copied verbatim from design/Main.dc.html ---- */
+body{margin:0}
+a{color:inherit}a:hover{color:var(--accent)}
+.np{--paper:#14120F;--panel:#1C1915;--ink:#EDE6D6;--soft:#B8AE9B;--rule:#4A4439;--accent:#E8694A;--invert-bg:#EDE6D6;--invert-ink:#14120F}
+.np.paper{--paper:#F3EDE0;--panel:#EAE2D2;--ink:#1A1714;--soft:#5A5347;--rule:#B9AE98;--accent:#A8321C;--invert-bg:#1A1714;--invert-ink:#F3EDE0}
+.np :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{appearance:none;-webkit-appearance:none;background:none;border:0;margin:0;color:inherit;font:inherit;cursor:pointer}
+.ico{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico.sm{width:13px;height:13px;stroke-width:2.2}
+.noscroll{scrollbar-width:none}.noscroll::-webkit-scrollbar{display:none}
+.topic{font-family:'Libre Franklin',Arial,sans-serif;font-size:11.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);white-space:nowrap}
+.topic.on{color:var(--ink);box-shadow:inset 0 -3px 0 var(--accent)}
+.angle{font-family:'Libre Franklin',Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:.03em;color:var(--soft)}
+.angle.on{color:var(--ink);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:6px}
+.act.on .ico{fill:var(--accent);stroke:var(--accent)}
+.stage{perspective:1600px;perspective-origin:50% 0}
+.page{position:absolute;inset:0;background:var(--paper);transform-origin:50% 0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.page.top{z-index:2}
+.page.under{z-index:1}
+.page.under.rest{visibility:hidden}
+.page.under::after{content:"";position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+.page.under.reveal::after{animation:shadeOut .62s ease-out forwards}
+.page.under.cover::after{animation:shadeIn .62s ease-in forwards}
+.page.flip-up{animation:flipUp .62s cubic-bezier(.5,.05,.7,.3) forwards;box-shadow:0 34px 44px rgba(0,0,0,.5)}
+.page.flip-down{animation:flipDown .62s cubic-bezier(.2,.6,.35,1) both;box-shadow:0 34px 44px rgba(0,0,0,.5)}
+@keyframes flipUp{0%{transform:rotateX(0deg);filter:brightness(1)}100%{transform:rotateX(100deg);filter:brightness(.55)}}
+@keyframes flipDown{0%{transform:rotateX(100deg);filter:brightness(.55)}100%{transform:rotateX(0deg);filter:brightness(1)}}
+@keyframes shadeOut{0%{opacity:.6}100%{opacity:0}}
+@keyframes shadeIn{0%{opacity:0}100%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.page.flip-up,.page.flip-down,.page.under.reveal::after,.page.under.cover::after{animation-duration:.01s}}
+.plate{background-color:var(--panel);background-image:radial-gradient(var(--rule) 1.1px,transparent 1.5px);background-size:7px 7px}
+.dropcap::first-letter{float:left;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:50px;line-height:42px;padding:4px 8px 0 0}
+/* ---- End of verbatim block ---- */
+
+/* Frame: the design is a fixed 390x844 phone. Small screens fill the
+   viewport; larger screens centre the phone frame on a dark neutral ground. */
+html,body{height:100%}
+body{background:#0B0A09;overflow:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.shell{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0B0A09}
+.np{width:100vw;width:100dvw;height:100vh;height:100dvh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;background:var(--paper);color:var(--ink);font-family:'Libre Caslon Text',Georgia,serif;position:relative}
+@media (min-width:480px){
+  .np{width:390px;height:844px;max-height:100vh;max-height:100dvh;box-shadow:0 0 0 1px #26231E,0 30px 80px rgba(0,0,0,.6)}
+}
+
+/* The design's inline styles, as classes with the same values. */
+.f-head{flex:none;padding:0 20px}
+.f-head-row{display:flex;align-items:center;justify-content:space-between;height:44px;font-family:'Libre Franklin',Arial,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.f-edition-btn{width:44px;height:44px;margin-right:-12px;display:inline-flex;align-items:center;justify-content:center;color:var(--ink)}
+.f-masthead{margin:0;font-family:'UnifrakturCook','Playfair Display',Georgia,serif;font-weight:700;font-size:34px;line-height:42px;text-align:center}
+.f-head-rule{height:7px;margin-top:2px;box-sizing:border-box;border-top:3px solid var(--ink);border-bottom:1px solid var(--ink)}
+.f-nav{flex:none;display:flex;overflow-x:auto;padding:0 8px;border-bottom:1px solid var(--rule)}
+.f-nav .topic{flex:none;min-height:44px;padding:0 12px}
+.f-stage{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+
+.f-story{position:absolute;inset:0;box-sizing:border-box;padding:14px 20px 10px;display:flex;flex-direction:column;gap:10px}
+.f-meta{flex:none;display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-family:'Libre Franklin',Arial,sans-serif;font-size:11px;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
+.f-meta-desk{color:var(--accent);font-weight:700}
+.f-meta-page{color:var(--soft);font-weight:500}
+.f-headline{flex:none;margin:0;font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:28px;line-height:31px;letter-spacing:-.01em;overflow-wrap:break-word}
+.f-readas{flex:none;display:flex;align-items:center;gap:2px;min-height:44px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.f-readas-label{font-family:'Libre Franklin',Arial,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-right:4px}
+.f-readas .angle{min-height:44px;padding:0 8px}
+.f-filed{margin-left:auto;font-size:12px;font-style:italic;color:var(--soft)}
+.f-plate{flex:none;height:100px;position:relative;border:1px solid var(--rule);display:flex;align-items:center;justify-content:center}
+.f-plate-tag{background:var(--paper);border:1px solid var(--rule);padding:5px 10px;font-family:'Libre Franklin',Arial,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.f-plate-cap{position:absolute;left:8px;bottom:6px;background:var(--paper);padding:1px 6px;font-size:11px;font-style:italic;color:var(--soft)}
+.f-body{flex:1;min-height:0;overflow:hidden;margin:0;font-size:15.5px;line-height:23px}
+.f-sources{flex:none;border-top:3px double var(--rule);padding-top:8px}
+.f-sources-row{display:flex;align-items:center;justify-content:space-between}
+.f-sources-label{font-family:'Libre Franklin',Arial,sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.f-stamp{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--accent);color:var(--accent);padding:4px 8px;font-family:'Libre Franklin',Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;transform:rotate(-2deg)}
+.f-links{display:flex;flex-wrap:wrap;column-gap:16px}
+.f-link{display:inline-flex;align-items:center;min-height:44px;font-family:'Libre Franklin',Arial,sans-serif;font-size:12.5px;font-weight:500;text-decoration:underline;text-underline-offset:3px}
+
+.f-end{position:absolute;inset:0;box-sizing:border-box;padding:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.f-end-mark{font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:46px;line-height:50px}
+.f-end-kicker{font-family:'Libre Franklin',Arial,sans-serif;font-size:10.5px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--soft)}
+.f-end-lede{margin:8px 0 0;font-size:20px;line-height:28px;font-style:italic}
+.f-end-note{margin:0;font-size:15px;line-height:23px;color:var(--soft)}
+.f-end-btn{margin-top:10px;min-height:44px;padding:0 18px;border:1.5px solid var(--ink);font-family:'Libre Franklin',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+.f-foot{flex:none;height:60px;box-sizing:border-box;border-top:1px solid var(--rule);padding:0 12px;display:flex;align-items:center;gap:4px;font-family:'Libre Franklin',Arial,sans-serif;font-size:12.5px;font-weight:600;position:relative}
+.f-acts{display:flex;align-items:center;gap:4px}
+.f-sq{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center}
+.f-spacer{margin-left:auto}
+.f-turn{min-height:44px;padding:0 12px;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--ink);font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+
+/* Additions that the design does not have. */
+.f-foot .btn[aria-disabled="true"]{opacity:.35;cursor:default}
+.f-toast{position:absolute;left:12px;bottom:66px;z-index:5;background:var(--invert-bg);color:var(--invert-ink);padding:6px 10px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+.f-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Short screens: give the body text the room by shrinking the picture plate. */
+@media (max-height:740px){.f-plate{height:64px}.f-plate-cap{display:none}}
+@media (max-height:640px){.f-plate{display:none}}
