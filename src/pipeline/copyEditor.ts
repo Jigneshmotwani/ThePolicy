@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Llm, Meter } from "@/lib/llm";
 import { splitSentences } from "@/lib/text";
+import { sheetText } from "./rewriteDesk";
 import type { Draft, Fact } from "./types";
 
 /**
@@ -26,6 +27,7 @@ You get a FACT SHEET (F1, F2, ...) and a numbered list of sentences from a draft
 For EACH sentence decide whether EVERYTHING it asserts is stated on the fact sheet.
 - "supported": true only if every name, number, date, place, cause, quote, attribution and implication in the sentence is backed by the listed facts. List the fact ids that back it in "facts".
 - "supported": false if any part goes beyond the sheet, contradicts it, firms up something the sheet only attributes ("police said X" printed as plain X), or adds judgement or speculation. Say what is unsupported in "problem".
+- If the sheet lists points DISPUTED between outlets, any sentence that states or implies one version of a disputed point is unsupported.
 Use only the fact sheet, not your own knowledge. If unsure, mark it false.
 Return {"sentences":[{"i":0,"supported":true,"facts":["F1"],"problem":""}, ...]} with one entry per sentence.`;
 
@@ -35,14 +37,14 @@ export interface SentenceProblem {
 }
 
 /** One checking pass. Returns the unsupported sentences (empty = clean). */
-export async function checkDraft(llm: Llm, meter: Meter, facts: Fact[], draft: Draft): Promise<SentenceProblem[]> {
+export async function checkDraft(llm: Llm, meter: Meter, facts: Fact[], draft: Draft, disputed: string[] = []): Promise<SentenceProblem[]> {
   const sentences = [draft.headline, ...splitSentences(draft.body)];
   const factIds = new Set(facts.map((_, i) => `F${i + 1}`));
   const res = await llm.json({
     tier: "strong",
     system: SYSTEM,
     user:
-      `FACT SHEET\n${facts.map((f, i) => `F${i + 1}. ${f.text}`).join("\n")}\n\n` +
+      `FACT SHEET\n${sheetText(facts, disputed)}\n\n` +
       `DRAFT SENTENCES\n${sentences.map((s, i) => `S${i}${i === 0 ? " (headline)" : ""}: ${s}`).join("\n")}`,
     schema: verdictSchema,
     check: (v) => {
@@ -52,7 +54,7 @@ export async function checkDraft(llm: Llm, meter: Meter, facts: Fact[], draft: D
       return null;
     },
     meter,
-    maxTokens: 5000,
+    maxTokens: 12000,
   });
 
   const problems: SentenceProblem[] = [];

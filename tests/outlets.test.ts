@@ -129,6 +129,22 @@ describe("fact sheet keeps only claims two independent outlets support", () => {
     expect(sheet.conflicts).toHaveLength(1);
   });
 
+  it("keeps an undisputed detail of a bundled claim, but not the disputed point itself", async () => {
+    const llm = scriptedLlm(() => ({
+      conflicts: [{ note: "Number injured: two or three", claims: ["R1.1", "R2.1"] }],
+      facts: [
+        { text: "An attack took place in Kulgam on Wednesday.", support: ["R1.1", "R2.1", "R2.2"] },
+        { text: "Three people were injured.", support: ["R1.1", "R2.1"] },
+      ],
+    }));
+    const sheet = await buildFactSheet(llm, new Meter(), [
+      { report: toi, claims: ["Three were injured in an attack in Kulgam on Wednesday."] },
+      { report: ht, claims: ["Two were injured in an attack in Kulgam.", "The attack was on Wednesday."] },
+    ], 2);
+    expect(sheet.facts.map((f) => f.text)).toEqual(["An attack took place in Kulgam on Wednesday."]);
+    expect(sheet.conflicts.map((c) => c.text)).toEqual(["Number injured: two or three"]);
+  });
+
   it("does not even ask the model when only one independent outlet has claims", async () => {
     const llm = scriptedLlm(() => ({ facts: [], conflicts: [] }));
     const sheet = await buildFactSheet(llm, new Meter(), [{ report: htWire, claims: ["c"] }, { report: ieWire, claims: ["c"] }], 2);

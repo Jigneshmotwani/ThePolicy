@@ -39,6 +39,8 @@ export interface JsonRequest<T> {
   check?: (value: T) => string | null;
   meter: Meter;
   maxTokens?: number;
+  /** Plain extraction work: run the tier without extended reasoning (faster, cheaper). */
+  light?: boolean;
 }
 
 /** The only thing the pipeline stages know about the model. Tests fake this. */
@@ -69,6 +71,7 @@ export type Complete = (args: {
   tier: Tier;
   messages: { role: "system" | "user" | "assistant"; content: string }[];
   maxTokens: number;
+  light?: boolean;
 }) => Promise<RawCompletion>;
 
 /**
@@ -87,7 +90,7 @@ export function makeLlm(complete: Complete, priceOf: (model: string) => Price | 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         let reply: RawCompletion;
         try {
-          reply = await complete({ tier: req.tier, messages, maxTokens: req.maxTokens ?? 4000 });
+          reply = await complete({ tier: req.tier, messages, maxTokens: req.maxTokens ?? 4000, light: req.light });
         } catch (e) {
           lastProblem = `API error: ${oneLine(String((e as Error)?.message ?? e), 160)}`;
           continue;
@@ -109,7 +112,9 @@ export function makeLlm(complete: Complete, priceOf: (model: string) => Price | 
             if (!problem) return parsed.data;
           }
         } catch (e) {
-          problem = `invalid JSON (${(e as Error).message})`;
+          problem = reply.text.includes("[reply cut off at the output token limit]")
+            ? "the reply ran out of room before the JSON was complete; think briefly and answer more concisely"
+            : `invalid JSON (${(e as Error).message})`;
         }
         lastProblem = problem ?? "";
         messages.push({ role: "assistant", content: reply.text.slice(0, 6000) });
@@ -175,24 +180,39 @@ export async function assertModelsAvailable(): Promise<void> {
 }
 
 export function realLlm(): Llm {
-  const complete: Complete = async ({ tier, messages, maxTokens }) => {
+  const complete: Complete = async ({ tier, messages, maxTokens, light }) => {
     const model = tier === "fast" ? env.modelFast : env.modelStrong;
-    const wanted = tier === "fast" ? env.reasoningFast : env.reasoningStrong;
+    const wanted = light ? env.reasoningLight : tier === "fast" ? env.reasoningFast : env.reasoningStrong;
     const info = modelCache?.get(model.toLowerCase());
     const effort = wanted && (!info || info.reasoningEfforts.includes(wanted)) ? wanted : undefined;
-    const res = await getClient().chat.completions.create({
+    // Streamed: long replies (the strong model thinking through a fact sheet)
+    // outlive the gateway's time limit for a single non-streamed response.
+    const stream = await getClient().chat.completions.create({
       model,
       messages,
       max_tokens: maxTokens,
       temperature: 0.2,
+      stream: true,
+      stream_options: { include_usage: true },
       ...(effort ? { reasoning_effort: effort as never } : {}),
     });
-    return {
-      text: res.choices[0]?.message?.content ?? "",
-      model: res.model || model,
-      promptTokens: res.usage?.prompt_tokens ?? 0,
-      completionTokens: res.usage?.completion_tokens ?? 0,
-    };
+    let text = "";
+    let served = model;
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let finish = "";
+    for await (const chunk of stream) {
+      if (chunk.model) served = chunk.model;
+      text += chunk.choices?.[0]?.delta?.content ?? "";
+      finish = chunk.choices?.[0]?.finish_reason ?? finish;
+      if (chunk.usage) {
+        promptTokens = chunk.usage.prompt_tokens ?? 0;
+        completionTokens = chunk.usage.completion_tokens ?? 0;
+      }
+    }
+    // Cut off by the token limit: say so, so the retry asks for a shorter answer.
+    if (finish === "length") text += "\n[reply cut off at the output token limit]";
+    return { text, model: served, promptTokens, completionTokens };
   };
   return makeLlm(complete, (m) => modelCache?.get(m.toLowerCase()));
 }

@@ -53,11 +53,12 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<"printed" | 
       return "waiting";
     }
     const facts: Fact[] = checked.facts;
+    const disputed = checked.disputed;
     const desk = ev.desk as Desk;
 
     /* 4. Rewrite Desk */
     const first = await runStep(ctx, "Rewrite Desk", ev.id, async (meter) => {
-      const d = await writeDraft(ctx.llm, meter, desk, facts);
+      const d = await writeDraft(ctx.llm, meter, desk, facts, disputed);
       return { note: `Wrote "${d.headline}" (${d.headline.length} chars) and a ${wordCount(d.body)}-word body from ${facts.length} facts`, value: d };
     });
 
@@ -65,7 +66,7 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<"printed" | 
     const edited = await copyDesk(first, {
       check: (draft, pass) =>
         runStep(ctx, "Copy Editor", ev.id, async (meter) => {
-          const problems = await checkDraft(ctx.llm, meter, facts, draft);
+          const problems = await checkDraft(ctx.llm, meter, facts, draft, disputed);
           const n = splitSentences(draft.body).length + 1;
           const note = !problems.length
             ? `${pass === 2 ? "After the rewrite, all" : "All"} ${n} sentences are supported by the fact sheet`
@@ -75,7 +76,7 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<"printed" | 
         }),
       rewrite: (draft, problems) =>
         runStep(ctx, "Rewrite Desk", ev.id, async (meter) => {
-          const d = await reviseDraft(ctx.llm, meter, desk, facts, draft, problems);
+          const d = await reviseDraft(ctx.llm, meter, desk, facts, draft, problems, disputed);
           return { note: `Rewrote the copy to fix ${problems.length} unsupported sentence${problems.length > 1 ? "s" : ""}: "${d.headline}"`, value: d };
         }),
     });
@@ -137,10 +138,21 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<"printed" | 
   }
 }
 
+/** One sweep at a time. The lock names its process, so a killed sweep does not block the next. */
 function acquireLock(db: Db, now: Date): boolean {
   const cur = getSetting(db, "sweep_lock");
-  if (cur && now.getTime() - new Date(cur).getTime() < LOCK_STALE_MS) return false;
-  setSetting(db, "sweep_lock", now.toISOString());
+  if (cur) {
+    const [pid, at] = cur.split("|");
+    let alive = false;
+    try {
+      process.kill(Number(pid), 0);
+      alive = Number(pid) !== process.pid;
+    } catch {
+      alive = false;
+    }
+    if (alive && now.getTime() - new Date(at).getTime() < LOCK_STALE_MS) return false;
+  }
+  setSetting(db, "sweep_lock", `${process.pid}|${now.toISOString()}`);
   return true;
 }
 
@@ -209,7 +221,7 @@ export async function sweep(overrides: Partial<Ctx> & { skipModelCheck?: boolean
     log(`  ${waiting} events waiting, ${expired} expired, ${queue.length} qualified for the desks${deferred ? ` (${deferred} more deferred to the next sweep)` : ""}.`);
 
     const counts = { printed: 0, held: 0, spiked: 0, waiting: 0, failed: 0 };
-    await pool(queue, 4, async (ev) => {
+    await pool(queue, 6, async (ev) => {
       const outcome = await processEvent(ctx, ev);
       counts[outcome]++;
       const row = db.prepare("SELECT headline, status_note FROM events WHERE id = ?").get(ev.id) as { headline: string | null; status_note: string };

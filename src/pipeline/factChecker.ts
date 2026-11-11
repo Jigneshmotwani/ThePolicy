@@ -41,10 +41,10 @@ const sheetSchema = z.object({
 
 const SHEET_SYSTEM = `You build a fact sheet for a news agency that only prints what at least two outlets independently report.
 You get claims from several reports of one event. Each claim has an id like R2.3 (report 2, claim 3).
-1. "facts": group claims from DIFFERENT reports that assert the same fact. For each group write one neutral sentence containing only what every claim in the group agrees on, and list the ids of the claims in "support". If one report is more specific than another, keep only the part both state. Include a fact only if claims from at least two different reports support it.
-2. "conflicts": where reports contradict each other on the same point (different numbers, names, dates, places, or opposite statements), do NOT make a fact. List the claim ids involved with a short note. "At least 10" versus "12" is a conflict unless you word nothing beyond what both state.
+1. "conflicts": first find every point on which reports contradict each other (different numbers, names, dates, times, places, or opposite statements). For each, list the ids of the claims involved and a short note naming the disputed point. "At least 10" versus "12" is a conflict.
+2. "facts": group claims from DIFFERENT reports that assert the same fact. For each group write one neutral sentence containing only what every claim in the group agrees on, and list those claim ids in "support". If one report is more specific than another, keep only the part both state. A claim that bundles several details may support a fact about one of its details. A fact must NOT state or imply any disputed point: leave the disputed detail out entirely (if outlets disagree on how many were injured, the fact may say an attack happened but must give no number). Include a fact only if claims from at least two different reports support it, and cover the core of the event: what happened, where, when, who.
 Never add knowledge of your own. Never merge claims that are merely related.
-Return {"facts":[{"text":"...","support":["R1.2","R3.1"]}],"conflicts":[{"note":"...","claims":["R1.4","R2.2"]}]}.`;
+Return {"conflicts":[{"note":"...","claims":["R1.4","R2.2"]}],"facts":[{"text":"...","support":["R1.2","R3.1"]}]}. Every id must be written out in full.`;
 
 export interface ReportClaims {
   report: OutletReport;
@@ -87,23 +87,29 @@ export async function buildFactSheet(
     user: lines.join("\n"),
     schema: sheetSchema,
     meter,
-    maxTokens: 6000,
+    maxTokens: 24000, // includes the model's reasoning, which is long for big events
   });
 
   const norm = (id: string) => id.trim().replace(/^\[|\]$/g, "");
-  const disputed = new Set<string>();
+  const conflictSets: Set<string>[] = [];
   const conflicts: SheetResult["conflicts"] = [];
   for (const c of res.conflicts) {
     const ids = c.claims.map(norm).filter((id) => idToReport.has(id));
-    ids.forEach((id) => disputed.add(id));
-    if (ids.length) conflicts.push({ text: c.note, reportIds: [...new Set(ids.map((id) => idToReport.get(id)!.id))] });
+    if (!ids.length) continue;
+    conflictSets.push(new Set(ids));
+    conflicts.push({ text: c.note, reportIds: [...new Set(ids.map((id) => idToReport.get(id)!.id))] });
   }
 
   const facts: SheetResult["facts"] = [];
   const seen = new Set<string>();
   for (const f of res.facts) {
     const ids = f.support.map(norm).filter((id) => idToReport.has(id));
-    if (!ids.length || ids.some((id) => disputed.has(id))) continue; // conflicting claims are left out
+    if (!ids.length) continue;
+    // Conflicting claims are left out: a "fact" resting entirely on claims
+    // that are party to one dispute is that dispute, however it is worded.
+    // (A bundled claim can still back an undisputed detail; the disputed
+    // points themselves go to the Rewrite Desk and Copy Editor as off-limits.)
+    if (conflictSets.some((set) => ids.every((id) => set.has(id)))) continue;
     const reports = [...new Map(ids.map((id) => [idToReport.get(id)!.id, idToReport.get(id)!])).values()];
     // The rule, enforced here: independent outlets, wire copies counted once.
     if (independentGroups(reports).length < minOutlets) continue;
@@ -119,7 +125,7 @@ export type FactCheckOutcome =
   | { kind: "waiting"; note: string; changed: boolean }
   | { kind: "expired"; note: string }
   | { kind: "unchanged" }
-  | { kind: "ready"; note: string; facts: Fact[]; outletCount: number };
+  | { kind: "ready"; note: string; facts: Fact[]; disputed: string[]; outletCount: number };
 
 const eventReports = (ctx: Ctx, eventId: number) =>
   ctx.db.prepare("SELECT * FROM reports WHERE event_id = ? ORDER BY published_at DESC").all(eventId) as unknown as ReportRow[];
@@ -181,6 +187,7 @@ async function readReport(ctx: Ctx, meter: Meter, r: ReportRow): Promise<void> {
     schema: claimsSchema,
     meter,
     maxTokens: 4000,
+    light: true,
   });
   const db = ctx.db;
   db.exec("BEGIN");
@@ -202,7 +209,8 @@ async function readReport(ctx: Ctx, meter: Meter, r: ReportRow): Promise<void> {
 export async function factCheck(ctx: Ctx, ev: EventRow, meter: Meter): Promise<FactCheckOutcome> {
   const db = ctx.db;
   const chosen = chooseReports(eventReports(ctx, ev.id));
-  for (const r of chosen) if (!r.claims_at) await readReport(ctx, meter, r);
+  // Reports are read side by side; the fetcher still spaces requests per outlet.
+  await Promise.all(chosen.filter((r) => !r.claims_at).map((r) => readReport(ctx, meter, r)));
 
   const read = db
     .prepare(`SELECT * FROM reports WHERE id IN (${chosen.map(() => "?").join(",")})`)
@@ -262,6 +270,7 @@ export async function factCheck(ctx: Ctx, ev: EventRow, meter: Meter): Promise<F
   return {
     kind: "ready",
     facts,
+    disputed: sheet.conflicts.map((c) => c.text),
     outletCount,
     note: `Fact sheet of ${facts.length} claims, each backed by 2+ of ${outletCount} independent outlets (${names})${left}`,
   };

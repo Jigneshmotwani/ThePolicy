@@ -17,7 +17,8 @@ const draftSchema = z.object({ headline: z.string().min(8), body: z.string().min
 
 const SYSTEM = `You are the rewrite desk of a news agency. You write a short news item from a FACT SHEET and from nothing else.
 Hard rules:
-- Use only facts on the sheet. Do not add names, numbers, dates, places, causes, context, background or consequences that are not on it, even if you know them.
+- Use only facts F1, F2, ... on the sheet. If the sheet lists points DISPUTED between outlets, do not mention them at all.
+- Do not add names, numbers, dates, places, causes, context, background or consequences that are not on it, even if you know them.
 - Original wording: plain sentences of your own. Neutral tone: no adjectives of judgement, no drama, no speculation, no advice to the reader.
 - Keep attribution where the sheet has it ("police said").
 - Headline: at most ${HEADLINE_MAX} characters, sentence case, no full stop, no clickbait.
@@ -34,18 +35,20 @@ export function lengthProblem(d: Draft): string | null {
   return null;
 }
 
-const sheetText = (facts: Fact[]) => facts.map((f, i) => `F${i + 1}. ${f.text}`).join("\n");
+export const sheetText = (facts: Fact[], disputed: string[] = []) =>
+  facts.map((f, i) => `F${i + 1}. ${f.text}`).join("\n") +
+  (disputed.length ? `\n\nDISPUTED BETWEEN OUTLETS (never state or imply any version of these)\n${disputed.map((d) => `- ${d}`).join("\n")}` : "");
 const clean = (d: Draft): Draft => ({ headline: d.headline.trim().replace(/\.$/, ""), body: d.body.replace(/\s+/g, " ").trim() });
 
-export async function writeDraft(llm: Llm, meter: Meter, desk: Desk, facts: Fact[]): Promise<Draft> {
+export async function writeDraft(llm: Llm, meter: Meter, desk: Desk, facts: Fact[], disputed: string[] = []): Promise<Draft> {
   const d = await llm.json({
     tier: "strong",
     system: SYSTEM,
-    user: `Desk: ${DESK_LABELS[desk]}\n\nFACT SHEET\n${sheetText(facts)}`,
+    user: `Desk: ${DESK_LABELS[desk]}\n\nFACT SHEET\n${sheetText(facts, disputed)}`,
     schema: draftSchema,
     check: (v) => lengthProblem(clean(v)),
     meter,
-    maxTokens: 4000,
+    maxTokens: 12000,
   });
   return clean(d);
 }
@@ -58,12 +61,13 @@ export async function reviseDraft(
   facts: Fact[],
   draft: Draft,
   problems: { sentence: string; problem: string }[],
+  disputed: string[] = [],
 ): Promise<Draft> {
   const d = await llm.json({
     tier: "strong",
     system: SYSTEM,
     user:
-      `Desk: ${DESK_LABELS[desk]}\n\nFACT SHEET\n${sheetText(facts)}\n\n` +
+      `Desk: ${DESK_LABELS[desk]}\n\nFACT SHEET\n${sheetText(facts, disputed)}\n\n` +
       `YOUR EARLIER DRAFT\nHeadline: ${draft.headline}\nBody: ${draft.body}\n\n` +
       `The copy editor found these parts are NOT supported by the fact sheet:\n` +
       problems.map((p) => `- "${p.sentence}": ${p.problem}`).join("\n") +
@@ -71,7 +75,7 @@ export async function reviseDraft(
     schema: draftSchema,
     check: (v) => lengthProblem(clean(v)),
     meter,
-    maxTokens: 4000,
+    maxTokens: 12000,
   });
   return clean(d);
 }

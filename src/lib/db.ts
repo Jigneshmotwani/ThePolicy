@@ -5,7 +5,7 @@ import { env } from "./env";
 
 export type Db = DatabaseSync;
 
-const MIGRATIONS_DIR = path.resolve(process.cwd(), "migrations");
+const MIGRATIONS_DIR = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "migrations");
 
 /** Apply any migrations/NNN_*.sql files that have not been applied yet. */
 export function migrate(db: Db, dir = MIGRATIONS_DIR): string[] {
@@ -16,11 +16,11 @@ export function migrate(db: Db, dir = MIGRATIONS_DIR): string[] {
     (db.prepare("SELECT name FROM schema_migrations").all() as { name: string }[]).map((r) => r.name),
   );
   const applied: string[] = [];
-  for (const file of fs.readdirSync(dir).filter((f) => f.endsWith(".sql")).sort()) {
+  for (const file of fs.readdirSync(/*turbopackIgnore: true*/ dir).filter((f) => f.endsWith(".sql")).sort()) {
     if (done.has(file)) continue;
     db.exec("BEGIN");
     try {
-      db.exec(fs.readFileSync(path.join(dir, file), "utf8"));
+      db.exec(fs.readFileSync(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ dir, file), "utf8"));
       db.prepare("INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)").run(file, nowIso());
       db.exec("COMMIT");
     } catch (e) {
@@ -33,7 +33,7 @@ export function migrate(db: Db, dir = MIGRATIONS_DIR): string[] {
 }
 
 export function openDb(file = env.databasePath): Db {
-  if (file !== ":memory:") fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
+  if (file !== ":memory:") fs.mkdirSync(path.dirname(path.resolve(/*turbopackIgnore: true*/ file)), { recursive: true });
   const db = new DatabaseSync(file);
   // WAL lets the app read while the worker writes.
   db.exec("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;");

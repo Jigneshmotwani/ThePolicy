@@ -24,6 +24,7 @@ export const env = {
   modelStrong: str("MODEL_STRONG", "deepseek-ai/deepseek-v4-pro"),
   reasoningFast: str("REASONING_FAST", "low"),
   reasoningStrong: str("REASONING_STRONG", "high"),
+  reasoningLight: str("REASONING_LIGHT", "none"),
   sweepMinutes: num("SWEEP_MINUTES", 5),
   minOutlets: num("MIN_OUTLETS", 2),
   waitingTtlHours: num("WAITING_TTL_HOURS", 12),
