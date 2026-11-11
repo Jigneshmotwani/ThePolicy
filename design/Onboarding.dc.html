@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Second Source: onboarding</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;family=Libre+Franklin:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=UnifrakturCook:wght@700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:var(--accent)}
+a.cta,a.cta:hover{color:var(--invert-ink)}
+.np{--paper:#14120F;--panel:#1C1915;--ink:#EDE6D6;--soft:#B8AE9B;--rule:#4A4439;--accent:#E8694A;--invert-bg:#EDE6D6;--invert-ink:#14120F}
+.np.paper{--paper:#F3EDE0;--panel:#EAE2D2;--ink:#1A1714;--soft:#5A5347;--rule:#B9AE98;--accent:#A8321C;--invert-bg:#1A1714;--invert-ink:#F3EDE0}
+.np :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{appearance:none;-webkit-appearance:none;background:none;border:0;margin:0;color:inherit;font:inherit;cursor:pointer}
+.ico{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;flex:none;display:none}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;box-sizing:border-box;padding:0 14px;border:1px solid var(--rule);font-family:'Libre Franklin',Arial,sans-serif;font-size:13px;font-weight:500;color:var(--ink)}
+.chip.on{background:var(--invert-bg);border-color:var(--invert-bg);color:var(--invert-ink);font-weight:700}
+.chip.on .ico{display:block}
+</style>
+</helmet>
+<div class="np {{editionClass}}" style="width: 390px; height: 844px; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; background: var(--paper); color: var(--ink); font-family: 'Libre Caslon Text', Georgia, serif">
+
+<header style="flex: none; padding: 0 20px">
+<div style="display: flex; align-items: center; justify-content: space-between; height: 32px; font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--soft)">
+<span>Reader's slip</span>
+<span>No login needed</span>
+</div>
+<h1 style="margin: 0; font-family: 'UnifrakturCook', 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 34px; line-height: 42px; text-align: center">The Second Source</h1>
+<div aria-hidden="true" style="height: 7px; margin-top: 2px; box-sizing: border-box; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink)"></div>
+</header>
+
+<main style="flex: 1; min-height: 0; box-sizing: border-box; padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 900; font-size: 30px; line-height: 33px; letter-spacing: -0.01em">Tell the editor who is reading.</h2>
+<p style="margin: 0; font-size: 14.5px; line-height: 21px; color: var(--soft)">Two questions. They decide the angle each story is written from. The facts stay the same for every reader.</p>
+</div>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-family: 'Libre Franklin', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">I. What do you do?</h3>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{jobs}}" as="job" hint-placeholder-count="7">
+<button class="{{job.cls}}" aria-pressed="{{job.on}}" onClick="{{job.pick}}">
+<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>{{job.label}}</span>
+</button>
+</sc-for>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h3 style="margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--rule); font-family: 'Libre Franklin', Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">II. What do you follow? <span style="font-weight: 500; color: var(--soft)">Pick any</span></h3>
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{beats}}" as="beat" hint-placeholder-count="10">
+<button class="{{beat.cls}}" aria-pressed="{{beat.on}}" onClick="{{beat.pick}}">
+<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span>{{beat.label}}</span>
+</button>
+</sc-for>
+</div>
+</section>
+
+<div style="margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 4px">
+<a class="cta" href="Main.dc.html" style="display: flex; align-items: center; justify-content: center; width: 100%; min-height: 50px; box-sizing: border-box; background: var(--invert-bg); font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none">Print my edition</a>
+<a href="Main.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; font-family: 'Libre Franklin', Arial, sans-serif; font-size: 12.5px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px">Skip for now</a>
+<p style="margin: 0; font-size: 12px; font-style: italic; color: var(--soft)">Your answers stay on this device.</p>
+</div>
+</main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"edition":{"editor":"enum","options":["night","paper"],"default":"night"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const edition = this.props.edition || 'night';
+    const jobNames = ['Student', 'Tech', 'Finance', 'Business owner', 'Media & arts', 'Public service', 'Other'];
+    const beatNames = ['Politics', 'World', 'Business', 'Markets', 'Cricket', 'Other sport', 'Film & TV', 'Technology', 'Science', 'Weather'];
+    const picked = s.beats || {};
+
+    const jobs = jobNames.map((label) => ({
+      label: label,
+      on: s.job === label,
+      cls: 'btn chip' + (s.job === label ? ' on' : ''),
+      pick: () => this.setState({ job: label })
+    }));
+
+    const beats = beatNames.map((label) => ({
+      label: label,
+      on: !!picked[label],
+      cls: 'btn chip' + (picked[label] ? ' on' : ''),
+      pick: () => {
+        const next = Object.assign({}, picked);
+        next[label] = !next[label];
+        this.setState({ beats: next });
+      }
+    }));
+
+    return {
+      editionClass: edition === 'paper' ? 'paper' : '',
+      jobs: jobs,
+      beats: beats
+    };
+  }
+}
+</script>
+</body>
+</html>

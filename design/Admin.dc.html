@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Second Source: newsroom console</title>
+<script src="./vendor/react.js"></script>
+<script src="./vendor/react-dom.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&amp;family=Libre+Franklin:wght@400;500;600;700&amp;family=Playfair+Display:ital,wght@0,400..900;1,400..900&amp;family=UnifrakturCook:wght@700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:var(--accent)}
+.np{--paper:#14120F;--panel:#1C1915;--ink:#EDE6D6;--soft:#B8AE9B;--rule:#4A4439;--accent:#E8694A;--invert-bg:#EDE6D6;--invert-ink:#14120F}
+.np.paper{--paper:#F3EDE0;--panel:#EAE2D2;--ink:#1A1714;--soft:#5A5347;--rule:#B9AE98;--accent:#A8321C;--invert-bg:#1A1714;--invert-ink:#F3EDE0}
+.np :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{appearance:none;-webkit-appearance:none;background:none;border:0;margin:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.act{min-height:44px;box-sizing:border-box;padding:0 16px;border:1.5px solid var(--ink);font-family:'Libre Franklin',Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;text-align:center}
+.act.solid{background:var(--invert-bg);border-color:var(--invert-bg);color:var(--invert-ink)}
+.seg{min-height:44px;box-sizing:border-box;padding:0 12px;border:1px solid var(--rule);font-family:'Libre Franklin',Arial,sans-serif;font-size:12px;font-weight:500;color:var(--soft);text-align:center}
+.seg.on{background:var(--invert-bg);border-color:var(--invert-bg);color:var(--invert-ink);font-weight:700}
+.cols{display:grid;grid-template-columns:minmax(0,2.4fr) 176px minmax(0,1.2fr) 84px 76px;column-gap:16px;align-items:center}
+.row{padding:10px 12px;border-bottom:1px solid var(--rule)}
+.row.sel{background:var(--panel)}
+.row.sel .ttl{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:5px}
+.pip{display:block;width:16px;height:6px;box-sizing:border-box;border:1px solid var(--soft)}
+.pip.on{background:var(--ink);border-color:var(--ink)}
+.pip.now{background:var(--accent);border-color:var(--accent)}
+.mk{display:block;width:10px;height:10px;box-sizing:border-box;border-radius:50%;border:1.5px solid var(--soft)}
+.mk.done{background:var(--ink);border-color:var(--ink)}
+.mk.now{background:var(--accent);border-color:var(--accent);animation:pulse 1.3s ease-in-out infinite}
+.mk.wait{border-color:var(--accent)}
+.stopped .mk.now{animation:none}
+.dot{display:block;width:9px;height:9px;border-radius:50%;background:var(--accent);animation:pulse 1.3s ease-in-out infinite}
+.stopped .dot{animation:none;background:none;border:1.5px solid var(--soft);box-sizing:border-box}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.mk.now,.dot{animation:none}}
+.field{width:100%;min-height:44px;box-sizing:border-box;padding:0 12px;background:var(--paper);color:var(--ink);border:1px solid var(--soft);border-radius:0;font-family:'Libre Franklin',Arial,sans-serif;font-size:14px}
+.field::placeholder{color:var(--soft);opacity:1}
+</style>
+</helmet>
+<div class="np {{rootCls}}" style="min-height: 100vh; box-sizing: border-box; background: var(--paper); color: var(--ink); font-family: 'Libre Caslon Text', Georgia, serif">
+<div style="max-width: 1360px; margin: 0 auto; box-sizing: border-box; padding: 20px 28px 32px; display: flex; flex-direction: column; gap: 24px">
+
+<header>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding-bottom: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px">
+<h1 style="margin: 0; font-family: 'UnifrakturCook', 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 34px; line-height: 44px">The Second Source</h1>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--soft)">Newsroom console · Specimen data</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px">
+<span style="display: inline-flex; align-items: center; gap: 9px; font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; font-weight: 500">
+<span class="dot" aria-hidden="true"></span>
+<span>{{pressText}}</span>
+</span>
+<button class="{{pressCls}}" onClick="{{togglePress}}">{{pressBtn}}</button>
+</div>
+</div>
+<div aria-hidden="true" style="height: 7px; box-sizing: border-box; border-top: 3px solid var(--ink); border-bottom: 1px solid var(--ink)"></div>
+</header>
+
+<section aria-label="Today at a glance" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 16px 28px">
+<sc-for list="{{stats}}" as="stat" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 2px; padding-bottom: 12px; border-bottom: 1px solid var(--rule)">
+<span style="font-family: 'Playfair Display', Georgia, serif; font-weight: 900; font-size: 42px; line-height: 46px">{{stat.n}}</span>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--soft)">{{stat.label}}</span>
+</div>
+</sc-for>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 32px">
+
+<div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px">
+<h2 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 24px; line-height: 30px">On the desk</h2>
+<span style="font-size: 14px; font-style: italic; color: var(--soft)">Pick a story to open its run sheet.</span>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 700px">
+<div class="cols" style="padding: 8px 12px; border-top: 1px solid var(--ink); border-bottom: 1px solid var(--ink); font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--soft)">
+<span>Story</span>
+<span>Stage</span>
+<span>Agent at work</span>
+<span>Outlets</span>
+<span>On desk</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0">
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="7">
+<li class="{{row.cls}}">
+<div style="min-width: 0">
+<button class="btn ttl" aria-pressed="{{row.selected}}" onClick="{{row.pick}}" style="display: block; width: 100%; min-height: 44px; font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 17px; line-height: 22px">{{row.title}}</button>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent)">{{row.desk}}</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div aria-hidden="true" style="display: flex; gap: 3px">
+<sc-for list="{{row.pips}}" as="pip" hint-placeholder-count="7">
+<span class="{{pip.cls}}"></span>
+</sc-for>
+</div>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 12px; font-weight: 500">{{row.stageLabel}}</span>
+</div>
+<div style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; font-weight: 600">{{row.agent}}</span>
+<span style="font-size: 13px; font-style: italic; color: var(--soft)">{{row.state}}</span>
+</div>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; font-weight: 500">{{row.outlets}}</span>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; color: var(--soft)">{{row.age}}</span>
+</li>
+</sc-for>
+</ul>
+</div>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px">
+<h2 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 24px; line-height: 30px">Desk rules</h2>
+<span style="font-size: 14px; font-style: italic; color: var(--soft)">Auto-print publishes once checks pass. Review first holds each story for your sign-off.</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 32px; border-top: 1px solid var(--ink)">
+<sc-for list="{{desks}}" as="desk" hint-placeholder-count="5">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-bottom: 1px solid var(--rule)">
+<span style="font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 17px">{{desk.name}}</span>
+<span style="display: inline-flex">
+<button class="{{desk.autoCls}}" aria-pressed="{{desk.isAuto}}" onClick="{{desk.setAuto}}">Auto-print</button>
+<button class="{{desk.reviewCls}}" aria-pressed="{{desk.isReview}}" onClick="{{desk.setReview}}">Review first</button>
+</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+
+<div style="flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+
+<section aria-label="Run sheet" style="box-sizing: border-box; padding: 18px 20px 20px; background: var(--panel); border: 1px solid var(--rule); display: flex; flex-direction: column; gap: 10px">
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--soft)">Run sheet · {{sel.desk}}</span>
+<h2 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 22px; line-height: 27px">{{sel.title}}</h2>
+<p style="margin: 0; font-size: 14.5px; line-height: 21px; font-style: italic; color: var(--soft)">{{sel.statusLine}}</p>
+<ol style="list-style: none; margin: 4px 0 0; padding: 0">
+<sc-for list="{{sel.steps}}" as="step" hint-placeholder-count="7">
+<li style="display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; column-gap: 12px; align-items: start; padding: 10px 0; border-top: 1px solid var(--rule)">
+<span class="{{step.mk}}" aria-hidden="true" style="margin-top: 4px"></span>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase">{{step.agent}}</span>
+<span style="font-size: 14px; line-height: 20px; color: var(--soft)">{{step.note}}</span>
+</div>
+<span style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft)">{{step.status}}</span>
+</li>
+</sc-for>
+</ol>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; padding-top: 6px">
+<sc-if value="{{sel.canApprove}}" hint-placeholder-val="{{false}}">
+<button class="btn act solid" onClick="{{approve}}">{{sel.approveLabel}}</button>
+</sc-if>
+<sc-if value="{{sel.canHold}}" hint-placeholder-val="{{true}}">
+<button class="btn act" onClick="{{hold}}">Hold for review</button>
+</sc-if>
+<sc-if value="{{sel.canRetract}}" hint-placeholder-val="{{false}}">
+<button class="btn act" onClick="{{retract}}">Retract</button>
+</sc-if>
+<sc-if value="{{sel.canSpike}}" hint-placeholder-val="{{true}}">
+<button class="btn act" onClick="{{spike}}">Spike story</button>
+</sc-if>
+</div>
+</section>
+
+<section style="display: flex; flex-direction: column; gap: 10px">
+<h2 style="margin: 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 800; font-size: 24px; line-height: 30px">Send a story to the desk</h2>
+<p style="margin: 0; font-size: 14.5px; line-height: 21px; font-style: italic; color: var(--soft)">Paste a link or name a topic. It goes through the same checks as every other story.</p>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="lead" style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">Link or topic</label>
+<input id="lead" class="field" type="text" value="{{draft}}" onChange="{{onDraft}}" placeholder="Paste a link, or type a topic">
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+<div style="flex: 1 1 160px; display: flex; flex-direction: column; gap: 6px">
+<label for="deskpick" style="font-family: 'Libre Franklin', Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase">Desk</label>
+<select id="deskpick" class="field" value="{{deskDraft}}" onChange="{{onDesk}}">
+<option value="India">India</option>
+<option value="World">World</option>
+<option value="Business">Business</option>
+<option value="Sport">Sport</option>
+<option value="Entertainment">Entertainment</option>
+</select>
+</div>
+<button class="btn act solid" onClick="{{submit}}">Send to the desk</button>
+</div>
+<sc-if value="{{formErr}}" hint-placeholder-val="{{false}}">
+<p role="alert" style="margin: 0; font-family: 'Libre Franklin', Arial, sans-serif; font-size: 13px; font-weight: 600; color: var(--accent)">Add a link or a topic first.</p>
+</sc-if>
+</section>
+
+</div>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"edition":{"editor":"enum","options":["night","paper"],"default":"night"},"$preview":{"width":1360,"height":1140}}'>
+class Component extends DCLogic {
+  agents() {
+    return [
+      { name: 'Wire Scout', short: 'Scout', job: 'Reads the outlet feeds for new reports.', done: 'Picked the report up from an outlet feed.' },
+      { name: 'Desk Sorter', short: 'Sort', job: 'Groups matching reports and files them to a desk.', done: 'Grouped the matching reports and filed them to the desk.' },
+      { name: 'Fact Checker', short: 'Check', job: 'Compares every claim across outlets.', done: 'Outlets agree. Disputed claims were left off the fact sheet.' },
+      { name: 'Rewrite Desk', short: 'Write', job: 'Writes each reader angle from the fact sheet.', done: 'Wrote the article in each reader angle.' },
+      { name: 'Copy Editor', short: 'Copy', job: 'Traces every sentence back to the fact sheet.', done: 'Every sentence traced back to the fact sheet.' },
+      { name: 'Picture Desk', short: 'Picture', job: 'Finds a licensed photo or makes a labelled illustration.', done: 'Attached a labelled image.' },
+      { name: 'Press Room', short: 'Print', job: 'Prints the story to the feed with its source links.', done: 'Printed to the feed with source links.' }
+    ];
+  }
+
+  seed() {
+    return [
+      { id: 'r1', title: 'Star batter turns founder with a sportswear label', desk: 'Sport', stage: 3, status: 'working', outlets: '3 outlets', age: '1 min' },
+      { id: 'r2', title: 'Central bank holds rates as prices cool', desk: 'Business', stage: 4, status: 'working', outlets: '3 outlets', age: '2 min' },
+      { id: 'r3', title: 'Metro extension gets cabinet approval', desk: 'India', stage: 2, status: 'waiting', outlets: '1 of 2', age: '14 min' },
+      { id: 'r4', title: 'Climate talks run past deadline over finance text', desk: 'World', stage: 5, status: 'working', outlets: '3 outlets', age: '3 min' },
+      { id: 'r5', title: 'State assembly passes heat-action bill', desk: 'India', stage: 6, status: 'held', outlets: '2 outlets', age: '6 min' },
+      { id: 'r6', title: 'Port strike enters a second day', desk: 'Business', stage: 2, status: 'waiting', outlets: '1 of 2', age: '9 min' },
+      { id: 'r7', title: "Small-town drama sweeps the festival's top prizes", desk: 'Entertainment', stage: 7, status: 'printed', outlets: '3 outlets', age: '21 min' }
+    ];
+  }
+
+  rows() {
+    const s = this.state || {};
+    return s.rows || this.seed();
+  }
+
+  patchSelected(patch) {
+    const s = this.state || {};
+    const rows = this.rows();
+    const selId = s.sel || rows[0].id;
+    this.setState({ rows: rows.map((r) => (r.id === selId ? Object.assign({}, r, patch) : r)) });
+  }
+
+  renderVals() {
+    const s = this.state || {};
+    const edition = this.props.edition || 'night';
+    const stopped = !!s.stopped;
+    const agents = this.agents();
+    const rows = this.rows();
+    const selId = s.sel || rows[0].id;
+    const selRow = rows.find((r) => r.id === selId) || rows[0];
+    const live = (r) => r.status === 'working' || r.status === 'waiting' || r.status === 'held';
+    const count = (list) => String(rows.filter((r) => list.indexOf(r.status) !== -1).length);
+
+    const stateText = {
+      working: 'Working',
+      waiting: 'Waiting for a second source',
+      held: 'Held for your sign-off',
+      printed: 'In the feed',
+      spiked: 'Dropped by an editor',
+      retracted: 'Removed from the feed'
+    };
+    const endLabel = { printed: 'Printed', spiked: 'Spiked', retracted: 'Retracted' };
+
+    const rowViews = rows.map((r) => ({
+      title: r.title,
+      desk: r.desk,
+      outlets: r.outlets,
+      age: r.age,
+      selected: r.id === selRow.id,
+      cls: 'cols row' + (r.id === selRow.id ? ' sel' : ''),
+      pick: () => this.setState({ sel: r.id }),
+      pips: agents.map((a, i) => ({ cls: 'pip' + (i < r.stage ? ' on' : i === r.stage && live(r) ? ' now' : '') })),
+      stageLabel: live(r) ? agents[r.stage].short + ' · step ' + (r.stage + 1) + ' of 7' : endLabel[r.status],
+      agent: live(r) ? agents[r.stage].name : 'None',
+      state: stopped && r.status === 'working' ? 'Paused' : stateText[r.status]
+    }));
+
+    const steps = agents.map((a, i) => {
+      if (i < selRow.stage) return { agent: a.name, note: a.done, status: 'Done', mk: 'mk done' };
+      if (i === selRow.stage && live(selRow)) {
+        if (selRow.status === 'waiting') return { agent: a.name, note: 'One outlet so far. Waiting for a second source before anything is written.', status: 'Waiting', mk: 'mk wait' };
+        if (selRow.status === 'held') return { agent: a.name, note: 'Stopped here. Waiting for your sign-off.', status: 'Held', mk: 'mk wait' };
+        return { agent: a.name, note: a.job, status: stopped ? 'Paused' : 'Working', mk: 'mk now' };
+      }
+      return { agent: a.name, note: a.job, status: live(selRow) ? 'Queued' : 'Not run', mk: 'mk' };
+    });
+
+    const statusLines = {
+      working: stopped ? 'Paused while the presses are stopped.' : 'Moving through the desk now.',
+      waiting: 'Seen in one outlet. It prints only when a second outlet reports the same event.',
+      held: 'Held. Nothing reaches the feed until you approve it.',
+      printed: 'Printed. Readers can see it in the feed.',
+      spiked: 'Spiked. This story will not be printed.',
+      retracted: 'Retracted. It has been removed from the feed.'
+    };
+
+    const rules = Object.assign({ India: 'review', World: 'auto', Business: 'auto', Sport: 'auto', Entertainment: 'auto' }, s.rules || {});
+    const setRule = (name, mode) => () => {
+      const next = Object.assign({}, rules);
+      next[name] = mode;
+      this.setState({ rules: next });
+    };
+    const desks = ['India', 'World', 'Business', 'Sport', 'Entertainment'].map((name) => ({
+      name: name,
+      isAuto: rules[name] === 'auto',
+      isReview: rules[name] === 'review',
+      autoCls: 'btn seg' + (rules[name] === 'auto' ? ' on' : ''),
+      reviewCls: 'btn seg' + (rules[name] === 'review' ? ' on' : ''),
+      setAuto: setRule(name, 'auto'),
+      setReview: setRule(name, 'review')
+    }));
+
+    return {
+      rootCls: (edition === 'paper' ? 'paper' : '') + (stopped ? ' stopped' : ''),
+      pressText: stopped ? 'Presses stopped. Nothing new will print.' : 'Presses running. Feeds are read every few minutes.',
+      pressBtn: stopped ? 'Restart the presses' : 'Stop the presses',
+      pressCls: 'btn act' + (stopped ? ' solid' : ''),
+      togglePress: () => this.setState({ stopped: !stopped }),
+      stats: [
+        { n: count(['working', 'held']), label: 'On the desk' },
+        { n: count(['waiting']), label: 'Waiting for a second source' },
+        { n: count(['printed']), label: 'Printed' },
+        { n: count(['spiked']), label: 'Spiked' },
+        { n: count(['retracted']), label: 'Retracted' }
+      ],
+      rows: rowViews,
+      desks: desks,
+      sel: {
+        title: selRow.title,
+        desk: selRow.desk,
+        statusLine: statusLines[selRow.status],
+        steps: steps,
+        canApprove: selRow.status === 'held',
+        approveLabel: selRow.stage >= 6 ? 'Approve and print' : 'Release hold',
+        canHold: selRow.status === 'working' || selRow.status === 'waiting',
+        canRetract: selRow.status === 'printed',
+        canSpike: live(selRow)
+      },
+      approve: () => this.patchSelected(selRow.stage >= 6 ? { status: 'printed', stage: 7 } : { status: 'working' }),
+      hold: () => this.patchSelected({ status: 'held' }),
+      retract: () => this.patchSelected({ status: 'retracted' }),
+      spike: () => this.patchSelected({ status: 'spiked' }),
+      draft: s.draft || '',
+      deskDraft: s.deskDraft || 'India',
+      formErr: !!s.formErr,
+      onDraft: (e) => this.setState({ draft: e.target.value, formErr: false }),
+      onDesk: (e) => this.setState({ deskDraft: e.target.value }),
+      submit: () => {
+        const text = (s.draft || '').trim();
+        if (!text) {
+          this.setState({ formErr: true });
+          return;
+        }
+        const id = 'm' + (rows.length + 1);
+        const row = { id: id, title: text, desk: s.deskDraft || 'India', stage: 0, status: 'working', outlets: 'Checking', age: 'Just now' };
+        this.setState({ rows: [row].concat(rows), sel: id, draft: '', formErr: false });
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>
