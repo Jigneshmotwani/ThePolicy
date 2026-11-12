@@ -181,23 +181,22 @@ export const eventReports = (ctx: Pick<Ctx, "db">, eventId: number) =>
 export function precheck(ctx: Ctx, ev: EventRow): FactCheckOutcome | { kind: "go"; reports: ReportRow[] } {
   const reports = eventReports(ctx, ev.id);
   const q = qualifies(reports.map(toOutletReport), env.minOutlets);
-  if (ctx.now().toISOString() >= ev.expires_at && !q.ok) {
-    return {
-      kind: "expired",
-      note: `Expired after ${env.waitingTtlHours}h without a second independent outlet (${q.reason})`,
-    };
+  // expires_at moves forward whenever a new report joins, so "expired" means
+  // nothing new has been reported for WAITING_TTL_HOURS.
+  if (ctx.now().toISOString() >= ev.expires_at) {
+    const why = !q.ok
+      ? `without a second independent outlet (${q.reason})`
+      : ev.facts_stale
+        ? "before the desks reached it (per-sweep cap or daily budget)"
+        : `: ${(ev.status_note ?? "no usable fact sheet").replace(/^Waiting: /, "")}`;
+    return { kind: "expired", note: `Expired after ${env.waitingTtlHours}h with nothing new ${why}`.replace("new :", "new:") };
   }
   if (!q.ok) {
     const names = [...new Set(reports.map((r) => outletName(r.outlet_id)))].join(", ") || "live pages only";
     const note = `Waiting: ${q.reason}. Reported by ${names}`;
     return { kind: "waiting", note, changed: note !== ev.status_note };
   }
-  if (!ev.facts_stale) {
-    if (ctx.now().toISOString() >= ev.expires_at) {
-      return { kind: "expired", note: `Expired after ${env.waitingTtlHours}h: ${ev.status_note ?? "no usable fact sheet"}` };
-    }
-    return { kind: "unchanged" };
-  }
+  if (!ev.facts_stale) return { kind: "unchanged" };
   return { kind: "go", reports };
 }
 
@@ -278,6 +277,20 @@ export async function factCheck(ctx: Ctx, ev: EventRow, meter: Meter): Promise<F
     report: toOutletReport(r),
     claims: (claimRows.all(r.id) as { text: string }[]).map((c) => c.text),
   }));
+  // Every fact needs a claim from outside the best-covered source, so the
+  // claims outside it bound how many facts there can be. Too few: skip the
+  // (expensive) fact-sheet call, it cannot succeed.
+  const groups = independentGroups(input.filter((i) => i.claims.length).map((i) => i.report));
+  const claimsIn = (g: OutletReport[]) => input.filter((i) => g.some((r) => r.id === i.report.id)).reduce((n, i) => n + i.claims.length, 0);
+  const sizes = groups.map(claimsIn).sort((a, b) => b - a);
+  const outsideLargest = sizes.slice(1).reduce((n, x) => n + x, 0);
+  if (outsideLargest < env.minClaims) {
+    return {
+      kind: "waiting",
+      changed: true,
+      note: `Waiting: ${q.count} outlets reported it, but the second source gives too little to match ${env.minClaims} claims (headline and summary only)`,
+    };
+  }
   const sheet = await buildFactSheet(ctx.llm, meter, input, env.minOutlets, ev.label);
 
   // Replace the event's fact sheet.

@@ -180,7 +180,8 @@ export async function groupReports(ctx: Ctx, meter: Meter, keptIn: Sorted[]): Pr
     try {
       if (target) {
         eventId = target.eventId;
-        db.prepare("UPDATE events SET facts_stale = 1, updated_at = ? WHERE id = ?").run(iso, eventId);
+        // A new report keeps a waiting event alive for another WAITING_TTL_HOURS.
+        db.prepare("UPDATE events SET facts_stale = 1, updated_at = ?, expires_at = ? WHERE id = ?").run(iso, expires, eventId);
         joined += reports.length;
       } else {
         const desks = reports.map((r) => deskOf.get(r.id)!);

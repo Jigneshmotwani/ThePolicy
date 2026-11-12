@@ -244,8 +244,9 @@ export async function sweep(overrides: RunOptions = {}): Promise<SweepSummary | 
     /* Recheck everything that is waiting. No model, no network: this costs nothing. */
     const waitingEvents = db
       .prepare(
-        `SELECT e.*, (SELECT COUNT(DISTINCT outlet_id) FROM reports r WHERE r.event_id = e.id) AS outlets
-         FROM events e WHERE e.status = 'waiting' ORDER BY e.priority DESC, outlets DESC, e.created_at ASC`,
+        // Editor submissions first, then the most recently reported: under the cap, fresh news wins.
+        `SELECT e.*, (SELECT MAX(published_at) FROM reports r WHERE r.event_id = e.id) AS latest
+         FROM events e WHERE e.status = 'waiting' ORDER BY e.priority DESC, latest DESC, e.id DESC`,
       )
       .all() as unknown as EventRow[];
     const queue: EventRow[] = [];
@@ -257,7 +258,7 @@ export async function sweep(overrides: RunOptions = {}): Promise<SweepSummary | 
       const pre = precheck(ctx, ev);
       bump.run(iso, ev.id);
       if (pre.kind === "expired") {
-        setEventStatus(ctx, ev.id, "spiked", "expired_unconfirmed", pre.note, {}, "waiting");
+        setEventStatus(ctx, ev.id, "spiked", pre.note.includes("before the desks") ? "expired_unprocessed" : "expired_unconfirmed", pre.note, {}, "waiting");
         writeStep(db, { sweepId, eventId: ev.id, agent: "Fact Checker", status: "ok", startedAt: iso, endedAt: iso, note: pre.note });
         summary.expired++;
       } else if (pre.kind === "waiting") {

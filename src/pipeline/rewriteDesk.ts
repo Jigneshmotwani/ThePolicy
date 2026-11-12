@@ -59,7 +59,7 @@ export async function writeDraft(llm: Llm, meter: Meter, desk: Desk, facts: Fact
     schema: draftSchema,
     check: (v) => lengthProblem(clean(v)),
     meter,
-    maxTokens: 12000,
+    maxTokens: 6000,
   });
   return clean(d);
 }
@@ -86,7 +86,7 @@ export async function reviseDraft(
     schema: draftSchema,
     check: (v) => lengthProblem(clean(v)),
     meter,
-    maxTokens: 12000,
+    maxTokens: 6000,
   });
   return clean(d);
 }
