@@ -18,7 +18,7 @@ export const article = (url: string, author: string | null, claims: string[]) =>
 export const BRIDGE = ["The Kosi bridge opened on Tuesday.", "The bridge is four kilometres long.", "The chief minister opened the bridge."];
 export const DAM = ["The Tehri dam gates were opened on Monday.", "Officials said water levels were safe.", "Two villages were alerted."];
 
-export function world(feeds: Record<string, FeedItem[]>, opts: { unsupported?: string[]; roles?: string[] } = {}) {
+export function world(feeds: Record<string, FeedItem[]>, opts: { unsupported?: string[]; roles?: string[]; shortBody?: boolean } = {}) {
   const llm = scriptedLlm((system, user) => {
     if (system.startsWith("You sort incoming")) {
       return { items: user.split("\n").map((_, i) => ({ i, desk: "india", kind: "event" })) };
@@ -42,6 +42,7 @@ export function world(feeds: Record<string, FeedItem[]>, opts: { unsupported?: s
       return { facts: [...byText].map(([text, support], i) => ({ text, support, role: opts.roles?.[i] ?? (i === 0 ? "core" : "supporting") })), conflicts: [] };
     }
     if (system.startsWith("You are the rewrite desk")) {
+      if (opts.shortBody) return { headline: "Kosi bridge opens to traffic", body: `The Kosi bridge opened on Tuesday. Then ${words(20)}.` };
       return { headline: "Kosi bridge opens to traffic", body: `The Kosi bridge opened on Tuesday. Then ${words(21)}. Later ${words(21)}.` };
     }
     if (system.startsWith("You are the copy editor")) {

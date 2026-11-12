@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DESK_LABELS, type Desk } from "@config/sources";
-import type { Llm, Meter } from "@/lib/llm";
+import { LlmStepError, type Llm, type Meter } from "@/lib/llm";
 import { splitSentences, wordCount } from "@/lib/text";
 import type { Draft, Fact } from "./types";
 
@@ -33,6 +33,28 @@ Format:
 - Plain text only: no markdown, no quotation marks unless the sheet quotes.
 Return {"headline":"...","body":"..."}.`;
 
+/**
+ * The fact sheet does not hold enough agreed fact to fill the minimum length,
+ * and the desk will not pad. Not a failure: the story waits for more.
+ */
+export class ThinSheetError extends Error {
+  constructor(public words: number) {
+    super(`could not write ${BODY_MIN_WORDS} words from the fact sheet without padding (best was ${words})`);
+    this.name = "ThinSheetError";
+  }
+}
+
+/** Run a drafting call; if it ends because every attempt came up short, say so as ThinSheetError. */
+async function drafting(call: () => Promise<Draft>): Promise<Draft> {
+  try {
+    return await call();
+  } catch (e) {
+    const short = e instanceof LlmStepError ? /body is (\d+) words/.exec(e.message) : null;
+    if (short && Number(short[1]) < BODY_MIN_WORDS) throw new ThinSheetError(Number(short[1]));
+    throw e;
+  }
+}
+
 export function lengthProblem(d: Draft): string | null {
   const h = d.headline.trim().length;
   if (h > HEADLINE_MAX) return `headline is ${h} characters; the limit is ${HEADLINE_MAX}`;
@@ -52,7 +74,7 @@ export const sheetText = (facts: Fact[], disputed: string[] = []) =>
 const clean = (d: Draft): Draft => ({ headline: d.headline.trim().replace(/\.$/, ""), body: d.body.replace(/\s+/g, " ").trim() });
 
 export async function writeDraft(llm: Llm, meter: Meter, desk: Desk, facts: Fact[], disputed: string[] = []): Promise<Draft> {
-  const d = await llm.json({
+  const d = await drafting(() => llm.json({
     tier: "strong",
     system: SYSTEM,
     user: `Desk: ${DESK_LABELS[desk]}\n\nFACT SHEET\n${sheetText(facts, disputed)}`,
@@ -60,7 +82,8 @@ export async function writeDraft(llm: Llm, meter: Meter, desk: Desk, facts: Fact
     check: (v) => lengthProblem(clean(v)),
     meter,
     maxTokens: 6000,
-  });
+    retryLight: true,
+  }));
   return clean(d);
 }
 
@@ -74,7 +97,7 @@ export async function reviseDraft(
   problems: { sentence: string; problem: string }[],
   disputed: string[] = [],
 ): Promise<Draft> {
-  const d = await llm.json({
+  const d = await drafting(() => llm.json({
     tier: "strong",
     system: SYSTEM,
     user:
@@ -87,6 +110,7 @@ export async function reviseDraft(
     check: (v) => lengthProblem(clean(v)),
     meter,
     maxTokens: 6000,
-  });
+    retryLight: true,
+  }));
   return clean(d);
 }

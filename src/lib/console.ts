@@ -62,8 +62,11 @@ function submissionView(db: Db, s: { id: number; input: string; kind: string; de
   const title = ev.headline ?? ev.label;
   if (ev.status === "waiting") {
     const single = /independent (outlet|source)/.test(ev.status_note ?? "") || /only corroboration/.test(ev.status_note ?? "");
+    if (/only corroboration/.test(ev.status_note ?? "")) {
+      return { ...base, state: "waiting_second_outlet", line: "Waiting for a content outlet. So far only corroboration-only outlets have reported it; it prints once Times of India, Hindustan Times or Indian Express does too." };
+    }
     return single
-      ? { ...base, state: "waiting_second_outlet", line: `Waiting for a second outlet. ${ev.status_note ?? ""} It prints only when a second independent outlet reports it.` }
+      ? { ...base, state: "waiting_second_outlet", line: `Waiting for a second outlet. ${(ev.status_note ?? "").replace(/^Waiting: /, "")}. It prints only when a second independent outlet reports it.` }
       : { ...base, state: "waiting", line: ev.status_note ?? "Waiting." };
   }
   const lines: Record<string, string> = {

@@ -41,6 +41,12 @@ export interface JsonRequest<T> {
   maxTokens?: number;
   /** Plain extraction work: run the tier without extended reasoning (faster, cheaper). */
   light?: boolean;
+  /**
+   * Retry without extended reasoning. For tasks where a rejected reply needs a
+   * small, exact correction ("62 words; must be 45 to 60") rather than more
+   * thought: the model otherwise spends its whole budget deliberating.
+   */
+  retryLight?: boolean;
 }
 
 /** The only thing the pipeline stages know about the model. Tests fake this. */
@@ -90,7 +96,7 @@ export function makeLlm(complete: Complete, priceOf: (model: string) => Price | 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         let reply: RawCompletion;
         try {
-          reply = await complete({ tier: req.tier, messages, maxTokens: req.maxTokens ?? 4000, light: req.light });
+          reply = await complete({ tier: req.tier, messages, maxTokens: req.maxTokens ?? 4000, light: req.light || (req.retryLight && attempt > 1) });
         } catch (e) {
           lastProblem = `API error: ${oneLine(String((e as Error)?.message ?? e), 160)}`;
           continue;

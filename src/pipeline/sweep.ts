@@ -10,9 +10,9 @@ import { checkDraft, copyDesk } from "./copyEditor";
 import { deskSorter } from "./deskSorter";
 import { factCheck, precheck } from "./factChecker";
 import { outletsBehind, pressDecision, readPressRules } from "./pressRoom";
-import { reviseDraft, writeDraft } from "./rewriteDesk";
+import { reviseDraft, ThinSheetError, writeDraft } from "./rewriteDesk";
 import { runStep, setEventStatus, writeStep } from "./runlog";
-import type { Ctx, EventRow, Fact } from "./types";
+import type { Ctx, Draft, EventRow, Fact } from "./types";
 import { wireScout } from "./wireScout";
 
 const MAX_STEP_FAILURES = 3;
@@ -71,10 +71,21 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<EventOutcome
     const desk = ev.desk as Desk;
 
     /* 4. Rewrite Desk */
+    const thin = (e: ThinSheetError) => `The ${facts.length} agreed facts are too thin for a 45-word item (best was ${e.words} words without padding); the story waits for more corroborated detail`;
     const first = await runStep(ctx, "Rewrite Desk", ev.id, async (meter) => {
-      const d = await writeDraft(ctx.llm, meter, desk, facts, disputed);
-      return { note: `Wrote "${d.headline}" (${d.headline.length} chars) and a ${wordCount(d.body)}-word body from ${facts.length} facts`, value: d };
+      try {
+        const d = await writeDraft(ctx.llm, meter, desk, facts, disputed);
+        return { note: `Wrote "${d.headline}" (${d.headline.length} chars) and a ${wordCount(d.body)}-word body from ${facts.length} facts`, value: d as Draft | null };
+      } catch (e) {
+        if (!(e instanceof ThinSheetError)) throw e;
+        return { note: thin(e), value: null };
+      }
     });
+    if (!first) {
+      // Hold rather than pad. A new report makes the facts stale again and the story gets another go.
+      setEventStatus(ctx, ev.id, "waiting", "thin_sheet", "Waiting: outlets agree on too little to write a full item; needs more corroborated detail", {}, "working");
+      return "waiting";
+    }
 
     /* 5. Copy Editor (one rewrite allowed) */
     const edited = await copyDesk(first, {
@@ -90,8 +101,14 @@ export async function processEvent(ctx: Ctx, ev: EventRow): Promise<EventOutcome
         }),
       rewrite: (draft, problems) =>
         runStep(ctx, "Rewrite Desk", ev.id, async (meter) => {
-          const d = await reviseDraft(ctx.llm, meter, desk, facts, draft, problems, disputed);
-          return { note: `Rewrote the copy to fix ${problems.length} unsupported sentence${problems.length > 1 ? "s" : ""}: "${d.headline}"`, value: d };
+          try {
+            const d = await reviseDraft(ctx.llm, meter, desk, facts, draft, problems, disputed);
+            return { note: `Rewrote the copy to fix ${problems.length} unsupported sentence${problems.length > 1 ? "s" : ""}: "${d.headline}"`, value: d };
+          } catch (e) {
+            if (!(e instanceof ThinSheetError)) throw e;
+            // Without the unsupported part there is not enough left to print: the Copy Editor's verdict stands.
+            return { note: `Could not fix it: without the unsupported part ${thin(e).replace(/^The/, "the")}`, value: draft };
+          }
         }),
     });
     if (!ours()) return "taken";

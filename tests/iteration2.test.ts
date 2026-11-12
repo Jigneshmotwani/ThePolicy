@@ -221,6 +221,24 @@ describe("copy shape", () => {
   });
 });
 
+describe("a fact sheet too thin to fill 45 words", () => {
+  it("makes the story wait; it is neither padded, printed, nor counted as a failure", async () => {
+    const db = openDb(":memory:");
+    const feeds = {
+      [feedUrl("toi")]: [item(article("https://toi.example/bridge", "Staff A", BRIDGE), "Kosi bridge opens")],
+      [feedUrl("ht")]: [item(article("https://ht.example/bridge-x", "Staff B", BRIDGE), "Kosi bridge inaugurated")],
+    };
+    const summary = await sweep({ db, ...world(feeds, { shortBody: true }) });
+    expect(summary).toMatchObject({ printed: 0, failed: 0, backToWaiting: 1 });
+    expect(db.prepare("SELECT status, status_reason, fail_count FROM events").get()).toMatchObject({ status: "waiting", status_reason: "thin_sheet", fail_count: 0 });
+    const step = db.prepare("SELECT status, note, llm_calls FROM steps WHERE agent = 'Rewrite Desk'").get() as { status: string; note: string; llm_calls: number };
+    expect(step.status).toBe("ok");
+    expect(step.note).toMatch(/too thin for a 45-word item \(best was 27 words/);
+    expect(step.llm_calls).toBe(3); // one try and two retries, as everywhere
+    expect(getPrintedStories(db)).toEqual([]);
+  });
+});
+
 describe("conflict notes", () => {
   it("name outlets, never internal claim ids", () => {
     const name = (i: number) => ["The Hindu", "Hindustan Times", "NDTV", "Times of India"][i - 1];
