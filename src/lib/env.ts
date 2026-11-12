@@ -2,10 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 
 // Load .env for the worker and scripts (Next.js loads it for the app itself).
-const envFile = path.resolve(process.cwd(), ".env");
-if (fs.existsSync(envFile)) {
+// (The turbopackIgnore comments stop the dev server treating the whole project folder,
+// database included, as a source dependency and reloading pages whenever the worker writes.)
+const envFile = path.resolve(/*turbopackIgnore: true*/ process.cwd(), ".env");
+if (fs.existsSync(/*turbopackIgnore: true*/ envFile)) {
   try {
-    process.loadEnvFile(envFile);
+    process.loadEnvFile(/*turbopackIgnore: true*/ envFile);
   } catch {
     /* unreadable .env: fall back to the real environment */
   }
